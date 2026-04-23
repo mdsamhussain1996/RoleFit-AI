@@ -510,6 +510,10 @@ Responsibilities:
 
         <div class="conv-jd-extras">
           <div class="conv-extra-row">
+            <label>API Key (Gemini):</label>
+            <input type="password" id="conv-api-key" placeholder="Paste your Gemini API Key here..." style="flex:1; padding:0.4rem; border-radius:0.5rem; border:1.5px solid var(--border);">
+          </div>
+          <div class="conv-extra-row">
             <label>Target Role (optional):</label>
             <select id="conv-role-select">
               <option value="">Auto-detect from JD</option>
@@ -577,8 +581,15 @@ Responsibilities:
           <div id="conv-before-text" class="conv-text-area"></div>
         </div>
         <div class="conv-ba-card">
-          <div class="conv-ba-label after-label">✨ Tailored CV</div>
+          <div class="conv-ba-label after-label">✨ Tailored CV (AI Optimized)</div>
           <div id="conv-after-text" class="conv-text-area"></div>
+        </div>
+      </div>
+
+      <!-- Professional Formatted Preview (Hidden by default, used for print/PDF) -->
+      <div id="conv-pro-template" class="hidden">
+        <div class="pro-resume-paper">
+          <div id="pro-resume-content"></div>
         </div>
       </div>
 

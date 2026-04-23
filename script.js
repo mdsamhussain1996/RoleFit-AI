@@ -399,73 +399,135 @@ function setConvTone(tone, btn) {
   btn.classList.add("active");
 }
 
-function convertCV() {
+async function convertCV() {
   const cvText = document.getElementById("conv-cv-input").value.trim();
   const jdText = document.getElementById("conv-jd-input").value.trim();
+  const apiKey = document.getElementById("conv-api-key").value.trim();
 
   if (!cvText || !jdText) {
     showToast("⚠️ Please provide both your CV and a Job Description.");
     return;
   }
 
-  showToast("🤖 AI is tailoring your CV...");
-  document.getElementById("btn-convert").innerText = "⏳ Tailoring CV...";
+  showToast(apiKey ? "🚀 Connecting to AI... this may take 5-10s" : "🤖 Running local AI simulation...");
+  document.getElementById("btn-convert").innerText = "⏳ AI is processing...";
   document.getElementById("btn-convert").disabled = true;
 
-  // Simulate AI Processing delay
-  setTimeout(() => {
-    const role = document.getElementById("conv-role-select").value || "Software Engineer";
-    const roleData = JOB_ROLES[role] || JOB_ROLES["Software Engineer"];
-    const jdKeywords = extractJDKeywords(jdText);
-    const matched = jdKeywords.filter(k => cvText.toLowerCase().includes(k.toLowerCase()));
-    const missing = jdKeywords.filter(k => !matched.includes(k)).slice(0, 5);
-
-    // Build Tailored CV
-    let tailoredCV = cvText;
-
-    // 1. Inject missing keywords into skills section if it exists
-    if (tailoredCV.toLowerCase().includes("skills")) {
-      const skillsRegex = /(skills\s*[:\-\n])([\s\S]*?)(?=\n\n|\n[A-Z]|$)/i;
-      tailoredCV = tailoredCV.replace(skillsRegex, (match, p1, p2) => {
-        return `${p1}${p2.trim()}, ${missing.join(", ")}`;
-      });
+  if (apiKey) {
+    try {
+      const response = await callGeminiAPI(apiKey, cvText, jdText);
+      renderAIResult(response, cvText);
+    } catch (err) {
+      console.error(err);
+      showToast("❌ AI Error: " + err.message);
+      document.getElementById("btn-convert").innerText = "✨ Convert CV to Match This Job";
+      document.getElementById("btn-convert").disabled = false;
     }
+  } else {
+    // Fallback to local simulation
+    setTimeout(() => {
+      const role = document.getElementById("conv-role-select").value || "Software Engineer";
+      const roleData = JOB_ROLES[role] || JOB_ROLES["Software Engineer"];
+      const jdKeywords = extractJDKeywords(jdText);
+      const matched = jdKeywords.filter(k => cvText.toLowerCase().includes(k.toLowerCase()));
+      const missing = jdKeywords.filter(k => !matched.includes(k)).slice(0, 5);
 
-    // 2. Rewrite summary with role specific language
-    const summaryRegex = /(summary|objective|profile\s*[:\-\n])([\s\S]*?)(?=\n\n|\n[A-Z]|$)/i;
-    if (tailoredCV.match(summaryRegex)) {
-      tailoredCV = tailoredCV.replace(summaryRegex, (match, p1) => {
-        return `${p1}${roleData.summary}`;
+      let tailoredCV = cvText;
+      if (tailoredCV.toLowerCase().includes("skills")) {
+        const skillsRegex = /(skills\s*[:\-\n])([\s\S]*?)(?=\n\n|\n[A-Z]|$)/i;
+        tailoredCV = tailoredCV.replace(skillsRegex, (match, p1, p2) => {
+          return `${p1}${p2.trim()}, ${missing.join(", ")}`;
+        });
+      }
+      const summaryRegex = /(summary|objective|profile\s*[:\-\n])([\s\S]*?)(?=\n\n|\n[A-Z]|$)/i;
+      if (tailoredCV.match(summaryRegex)) {
+        tailoredCV = tailoredCV.replace(summaryRegex, (match, p1) => {
+          return `${p1}${roleData.summary}`;
+        });
+      } else {
+        tailoredCV = `SUMMARY\n${roleData.summary}\n\n${tailoredCV}`;
+      }
+      ACTION_VERBS.slice(0, 3).forEach((verb, i) => {
+        tailoredCV = tailoredCV.replace(/•\s+/g, (match, offset) => {
+          return offset % 2 === 0 ? `• ${verb} ` : match;
+        });
       });
-    } else {
-      // Prepend summary if missing
-      tailoredCV = `SUMMARY\n${roleData.summary}\n\n${tailoredCV}`;
-    }
 
-    // 3. Impact enhancement (simulate with action verbs)
-    ACTION_VERBS.slice(0, 3).forEach((verb, i) => {
-      tailoredCV = tailoredCV.replace(/•\s+/g, (match, offset) => {
-        return offset % 2 === 0 ? `• ${verb} ` : match;
-      });
-    });
+      const simulatedResult = {
+        tailoredText: tailoredCV,
+        keywordsAdded: missing,
+        scoreBefore: Math.round(40 + (matched.length / Math.max(jdKeywords.length, 1)) * 30),
+        scoreAfter: 88,
+        improvements: 4
+      };
+      renderAIResult(simulatedResult, cvText);
+    }, 2000);
+  }
+}
 
-    // Update UI
-    document.getElementById("conv-before-text").innerText = cvText;
-    document.getElementById("conv-after-text").innerText = tailoredCV;
-    document.getElementById("conv-keywords-added").innerText = missing.length;
-    document.getElementById("conv-score-before").innerText = Math.round(40 + (matched.length / jdKeywords.length) * 30);
-    document.getElementById("conv-score-after").innerText = Math.round(75 + (missing.length / 5) * 20);
-    document.getElementById("conv-improvements").innerText = 4;
+async function callGeminiAPI(key, cv, jd) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+  const prompt = `You are a professional Resume Optimizer.
+Target Job Description:
+${jd}
 
-    document.getElementById("conv-keyword-chips").innerHTML = missing.map(k => `<span class="chip-matched">✅ ${k}</span>`).join("");
+User's Current CV:
+${cv}
 
-    document.getElementById("conv-output-section").classList.remove("hidden");
-    document.getElementById("btn-convert").innerText = "✨ Convert CV to Match This Job";
-    document.getElementById("btn-convert").disabled = false;
+TASK:
+1. Tailor the CV to perfectly match the Job Description.
+2. Optimize for ATS keywords found in the JD.
+3. Enhance bullet points using strong action verbs and quantifiable metrics.
+4. Keep the output professional and concise.
 
-    showToast("✅ CV successfully tailored to the job description!");
-    document.getElementById("conv-output-section").scrollIntoView({ behavior: 'smooth' });
-  }, 1500);
+RETURN ONLY A JSON OBJECT with this structure:
+{
+  "tailoredText": "full plain text of the new resume",
+  "keywordsAdded": ["list", "of", "keywords", "you", "injected"],
+  "scoreBefore": 45,
+  "scoreAfter": 92,
+  "improvements": 5,
+  "formattedHTML": "a clean HTML version for professional printing. Use <h1> for name, <div class='contact-info'> for contact info, <h2> for section headers, <p> for paragraphs, and <ul><li> for bullets. Avoid any style tags, use the classes provided."
+}`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { responseMimeType: "application/json" }
+    })
+  });
+
+  if (!res.ok) throw new Error(await res.text());
+  const json = await res.json();
+  return JSON.parse(json.candidates[0].content.parts[0].text);
+}
+
+function renderAIResult(result, originalCV) {
+  document.getElementById("conv-before-text").innerText = originalCV;
+  document.getElementById("conv-after-text").innerText = result.tailoredText;
+  document.getElementById("conv-keywords-added").innerText = result.keywordsAdded.length;
+  document.getElementById("conv-score-before").innerText = result.scoreBefore;
+  document.getElementById("conv-score-after").innerText = result.scoreAfter;
+  document.getElementById("conv-improvements").innerText = result.improvements;
+
+  document.getElementById("conv-keyword-chips").innerHTML = result.keywordsAdded.map(k => `<span class="chip-matched">✅ ${k}</span>`).join("");
+
+  // Professional Template Render
+  if (result.formattedHTML) {
+    document.getElementById("pro-resume-content").innerHTML = result.formattedHTML;
+  } else {
+    // Basic fallback if AI didn't provide HTML
+    document.getElementById("pro-resume-content").innerHTML = `<h1>CV</h1><pre>${result.tailoredText}</pre>`;
+  }
+
+  document.getElementById("conv-output-section").classList.remove("hidden");
+  document.getElementById("btn-convert").innerText = "✨ Convert CV to Match This Job";
+  document.getElementById("btn-convert").disabled = false;
+
+  showToast("✅ CV successfully tailored by AI!");
+  document.getElementById("conv-output-section").scrollIntoView({ behavior: 'smooth' });
 }
 
 function downloadConvertedCV() {

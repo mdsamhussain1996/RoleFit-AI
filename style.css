@@ -302,7 +302,54 @@ body{font-family:'Inter',system-ui,sans-serif;color:var(--text);background:var(-
 /* Print styles for converted CV */
 @media print {
   #page-converter { background: white; }
-  .converter-topbar, .converter-how, .converter-inputs, .conv-action-bar, .conv-stats-bar, .conv-added-keywords, .before-label, .after-label, .conv-ba-card:first-child, .conv-download-bar { display: none !important; }
-  .conv-ba-card:last-child { border: none; height: auto; display: block !important; }
-  .conv-text-area { overflow: visible; padding: 0; }
+  #page-converter .pro-resume-paper {
+    box-shadow: none;
+    margin: 0;
+    width: 100%;
+    padding: 0;
+    display: block !important;
+  }
+  #page-converter #conv-pro-template {
+    display: block !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 9999;
+    background: white;
+  }
+  /* Hide everything else on the converter page during print */
+  #page-converter .converter-topbar, 
+  #page-converter .converter-how, 
+  #page-converter .converter-inputs, 
+  #page-converter .conv-action-bar, 
+  #page-converter .conv-stats-bar, 
+  #page-converter .conv-added-keywords,
+  #page-converter .conv-before-after,
+  #page-converter .conv-download-bar {
+    display: none !important;
+  }
 }
+
+/* Professional Resume Template for AI Converted CV */
+.pro-resume-paper {
+  background: white;
+  width: 210mm; /* A4 Width */
+  min-height: 297mm; /* A4 Height */
+  padding: 20mm;
+  margin: 0 auto;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  color: #333;
+  font-family: 'Inter', sans-serif;
+  line-height: 1.5;
+  text-align: left;
+}
+
+#pro-resume-content h1 { font-size: 24pt; font-weight: 800; color: #1b4332; margin-bottom: 5pt; text-transform: uppercase; border-bottom: 2pt solid #2d6a4f; }
+#pro-resume-content h2 { font-size: 14pt; font-weight: 700; color: #2d6a4f; margin-top: 15pt; margin-bottom: 5pt; text-transform: uppercase; border-bottom: 1pt solid #d4c9a8; }
+#pro-resume-content .contact-info { font-size: 10pt; color: #666; margin-bottom: 15pt; }
+#pro-resume-content p { font-size: 11pt; margin-bottom: 8pt; }
+#pro-resume-content ul { padding-left: 15pt; margin-bottom: 10pt; }
+#pro-resume-content li { font-size: 11pt; margin-bottom: 4pt; }
+#pro-resume-content .bold { font-weight: 700; }
+
