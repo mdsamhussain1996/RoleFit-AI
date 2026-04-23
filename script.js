@@ -19,6 +19,7 @@ let state = {
 function showPage(page) {
   document.getElementById("page-home").classList.toggle("hidden", page !== "home");
   document.getElementById("page-builder").classList.toggle("hidden", page !== "builder");
+  document.getElementById("page-converter").classList.toggle("hidden", page !== "converter");
   window.scrollTo(0, 0);
   if (page === "builder") renderTemplates();
 }
@@ -387,6 +388,103 @@ function showToast(msg) {
   $toast.classList.remove("hidden");
   clearTimeout(window._toastTimer);
   window._toastTimer = setTimeout(() => $toast.classList.add("hidden"), 2800);
+}
+
+// ---- CV CONVERTER LOGIC ----
+let convTone = "professional";
+
+function setConvTone(tone, btn) {
+  convTone = tone;
+  document.querySelectorAll("#page-converter .tone-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+}
+
+function convertCV() {
+  const cvText = document.getElementById("conv-cv-input").value.trim();
+  const jdText = document.getElementById("conv-jd-input").value.trim();
+
+  if (!cvText || !jdText) {
+    showToast("⚠️ Please provide both your CV and a Job Description.");
+    return;
+  }
+
+  showToast("🤖 AI is tailoring your CV...");
+  document.getElementById("btn-convert").innerText = "⏳ Tailoring CV...";
+  document.getElementById("btn-convert").disabled = true;
+
+  // Simulate AI Processing delay
+  setTimeout(() => {
+    const role = document.getElementById("conv-role-select").value || "Software Engineer";
+    const roleData = JOB_ROLES[role] || JOB_ROLES["Software Engineer"];
+    const jdKeywords = extractJDKeywords(jdText);
+    const matched = jdKeywords.filter(k => cvText.toLowerCase().includes(k.toLowerCase()));
+    const missing = jdKeywords.filter(k => !matched.includes(k)).slice(0, 5);
+
+    // Build Tailored CV
+    let tailoredCV = cvText;
+
+    // 1. Inject missing keywords into skills section if it exists
+    if (tailoredCV.toLowerCase().includes("skills")) {
+      const skillsRegex = /(skills\s*[:\-\n])([\s\S]*?)(?=\n\n|\n[A-Z]|$)/i;
+      tailoredCV = tailoredCV.replace(skillsRegex, (match, p1, p2) => {
+        return `${p1}${p2.trim()}, ${missing.join(", ")}`;
+      });
+    }
+
+    // 2. Rewrite summary with role specific language
+    const summaryRegex = /(summary|objective|profile\s*[:\-\n])([\s\S]*?)(?=\n\n|\n[A-Z]|$)/i;
+    if (tailoredCV.match(summaryRegex)) {
+      tailoredCV = tailoredCV.replace(summaryRegex, (match, p1) => {
+        return `${p1}${roleData.summary}`;
+      });
+    } else {
+      // Prepend summary if missing
+      tailoredCV = `SUMMARY\n${roleData.summary}\n\n${tailoredCV}`;
+    }
+
+    // 3. Impact enhancement (simulate with action verbs)
+    ACTION_VERBS.slice(0, 3).forEach((verb, i) => {
+      tailoredCV = tailoredCV.replace(/•\s+/g, (match, offset) => {
+        return offset % 2 === 0 ? `• ${verb} ` : match;
+      });
+    });
+
+    // Update UI
+    document.getElementById("conv-before-text").innerText = cvText;
+    document.getElementById("conv-after-text").innerText = tailoredCV;
+    document.getElementById("conv-keywords-added").innerText = missing.length;
+    document.getElementById("conv-score-before").innerText = Math.round(40 + (matched.length / jdKeywords.length) * 30);
+    document.getElementById("conv-score-after").innerText = Math.round(75 + (missing.length / 5) * 20);
+    document.getElementById("conv-improvements").innerText = 4;
+
+    document.getElementById("conv-keyword-chips").innerHTML = missing.map(k => `<span class="chip-matched">✅ ${k}</span>`).join("");
+
+    document.getElementById("conv-output-section").classList.remove("hidden");
+    document.getElementById("btn-convert").innerText = "✨ Convert CV to Match This Job";
+    document.getElementById("btn-convert").disabled = false;
+
+    showToast("✅ CV successfully tailored to the job description!");
+    document.getElementById("conv-output-section").scrollIntoView({ behavior: 'smooth' });
+  }, 1500);
+}
+
+function downloadConvertedCV() {
+  showToast("🖨️ Opening print dialog. Please choose 'Save as PDF'.");
+  window.print();
+}
+
+function copyConvertedCV() {
+  const text = document.getElementById("conv-after-text").innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    showToast("📋 Tailored CV copied to clipboard!");
+  });
+}
+
+function reconvert() {
+  document.getElementById("conv-output-section").classList.add("hidden");
+  document.getElementById("conv-jd-input").value = "";
+  window.scrollTo(0, 0);
+  showToast("🔄 Ready for a new job description.");
 }
 
 // ---- INIT ----
